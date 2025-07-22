@@ -1,68 +1,89 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <title>Join USD1 MLM</title>
+  <title>USD1 MLM Join</title>
   <script src="https://cdn.jsdelivr.net/npm/web3@1.8.2/dist/web3.min.js"></script>
   <style>
-    body { font-family: Arial; background: #f2f2f2; padding: 30px; }
-    .box { background: #fff; padding: 20px; border-radius: 10px; max-width: 400px; margin: auto; }
-    input, button { width: 100%; padding: 10px; margin-top: 10px; }
+    body { font-family: Arial; padding: 20px; }
+    input, button { padding: 10px; margin: 5px 0; width: 300px; }
+    button { background-color: #28a745; color: white; border: none; cursor: pointer; }
+    #status { margin-top: 20px; color: #333; }
   </style>
 </head>
 <body>
-  <div class="box">
-    <h2>Join USD1 MLM</h2>
-    <div id="wallet">Connecting...</div>
-    <input type="text" id="refInput" placeholder="Referrer Address (optional)" />
-    <button onclick="approveAndJoin()">Join Now ($2 USD1)</button>
-    <div id="status"></div>
-  </div>
+
+  <h2>Join MLM with USD1 Token</h2>
+  <input type="text" id="referrer" placeholder="Enter Referrer Address" />
+  <button onclick="joinMLM()">🔗 Connect & Join</button>
+
+  <p id="status">Connect your wallet to get started.</p>
 
   <script>
-    const CONTRACT_ADDRESS = "0xd0B3F5DB3Ed55B3e7A62d23887BD9A2F49bA3f1a";
-    const USD1_ADDRESS = "0x8d0D000Ee44948FC98c9B98A4FA4921476f08B0d";
-    let web3, account, contract, token;
+    const contractAddress = "0xf6a041B825cca4200D8bB909Cf3843fce6e96114";
+    const usd1Address = "0x8d0D000Ee44948FC98c9B98A4FA4921476f08B0d";
 
-    const CONTRACT_ABI = [
-      { "inputs": [{ "internalType": "address", "name": "referrer", "type": "address" }], "name": "join", "outputs": [], "stateMutability": "nonpayable", "type": "function" }
+    const contractABI = [
+      {
+        "inputs": [{"internalType": "address", "name": "referrer", "type": "address"}],
+        "name": "join",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      }
     ];
 
-    const ERC20_ABI = [
-      { "constant": true, "inputs": [{ "name": "owner", "type": "address" }, { "name": "spender", "type": "address" }], "name": "allowance", "outputs": [{ "name": "", "type": "uint256" }], "type": "function" },
-      { "constant": false, "inputs": [{ "name": "spender", "type": "address" }, { "name": "value", "type": "uint256" }], "name": "approve", "outputs": [{ "name": "", "type": "bool" }], "type": "function" }
+    const usd1ABI = [
+      {
+        "inputs": [
+          { "internalType": "address", "name": "spender", "type": "address" },
+          { "internalType": "uint256", "name": "amount", "type": "uint256" }
+        ],
+        "name": "approve",
+        "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      }
     ];
 
-    async function connectWallet() {
-      if (window.ethereum) {
+    let web3, user;
+
+    async function joinMLM() {
+      try {
+        if (!window.ethereum) {
+          alert("MetaMask is not installed!");
+          return;
+        }
+
         web3 = new Web3(window.ethereum);
         await window.ethereum.request({ method: 'eth_requestAccounts' });
         const accounts = await web3.eth.getAccounts();
-        account = accounts[0];
-        document.getElementById("wallet").innerText = `Connected: ${account}`;
-        contract = new web3.eth.Contract(CONTRACT_ABI, CONTRACT_ADDRESS);
-        token = new web3.eth.Contract(ERC20_ABI, USD1_ADDRESS);
-      } else {
-        alert("Please install MetaMask.");
+        user = accounts[0];
+        document.getElementById("status").innerText = "Wallet connected: " + user;
+
+        const referrer = document.getElementById("referrer").value;
+        if (!web3.utils.isAddress(referrer)) {
+          alert("Invalid referrer address");
+          return;
+        }
+
+        const usd1 = new web3.eth.Contract(usd1ABI, usd1Address);
+        const contract = new web3.eth.Contract(contractABI, contractAddress);
+        const amount = web3.utils.toWei("2", "ether");
+
+        // Step 1: Approve
+        document.getElementById("status").innerText = "Step 1: Approving 2 USD1 to contract...";
+        await usd1.methods.approve(contractAddress, amount).send({ from: user });
+
+        // Step 2: Join
+        document.getElementById("status").innerText = "Step 2: Calling join(referrer)...";
+        await contract.methods.join(referrer).send({ from: user });
+
+        document.getElementById("status").innerText = "✅ Successfully joined the system!";
+      } catch (error) {
+        document.getElementById("status").innerText = "❌ Error: " + error.message;
       }
     }
-
-    async function approveAndJoin() {
-      const ref = document.getElementById("refInput").value || account;
-      const allowance = await token.methods.allowance(account, CONTRACT_ADDRESS).call();
-      const required = web3.utils.toWei("2", "ether");
-
-      if (parseInt(allowance) < required) {
-        document.getElementById("status").innerText = "Approving $2 USD1...";
-        await token.methods.approve(CONTRACT_ADDRESS, required).send({ from: account });
-      }
-
-      document.getElementById("status").innerText = "Joining MLM system...";
-      await contract.methods.join(ref).send({ from: account });
-      document.getElementById("status").innerText = "Joined successfully!";
-    }
-
-    window.addEventListener("load", connectWallet);
   </script>
+
 </body>
 </html>
