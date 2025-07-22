@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>USD1 MLM Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
+  <style>
+    body { font-family: Arial; padding: 20px; background: #f5f5f5; }
+    .card { background: #fff; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 0 10px rgba(0,0,0,0.05); }
+    input, button { padding: 10px; margin-top: 5px; width: 100%; font-size: 16px; margin-bottom: 10px; }
+    button { background: #007bff; color: white; border: none; cursor: pointer; border-radius: 6px; }
+    button:hover { background: #0056b3; }
+  </style>
+</head>
+<body>
+
+  <h2>USD1 MLM Dashboard</h2>
+
+  <div class="card">
+    <p><strong>Wallet Address:</strong> <span id="wallet">Not Connected</span></p>
+    <p><strong>Total Direct Referrals:</strong> <span id="directs">-</span></p>
+    <p><strong>Eligible for Dividend:</strong> <span id="eligible">-</span></p>
+    <p><strong>Dividend Claimed (Last Month):</strong> <span id="claimed">-</span></p>
+  </div>
+
+  <div class="card">
+    <h4>Join MLM</h4>
+    <input type="text" id="referrer" placeholder="Enter referrer address" />
+    <button onclick="joinMLM()">Join for $20 USD1</button>
+  </div>
+
+  <div class="card">
+    <h4>Claim Monthly Dividend</h4>
+    <button onclick="claimDividend()">Claim Dividend</button>
+  </div>
+
+  <script>
+    const CONTRACT_ADDRESS = "0x528C40478b9a0dd180C1DB47141e285fF00c4fCA";
+    const ABI = [[
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "recipient",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "amount",
+				"type": "uint256"
+			}
+		],
+		"name": "transfer",
+		"outputs": [
+			{
+				"internalType": "bool",
+				"name": "",
+				"type": "bool"
+			}
+		],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "sender",
+				"type": "address"
+			},
+			{
+				"internalType": "address",
+				"name": "recipient",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "amount",
+				"type": "uint256"
+			}
+		],
+		"name": "transferFrom",
+		"outputs": [
+			{
+				"internalType": "bool",
+				"name": "",
+				"type": "bool"
+			}
+		],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	}
+]];
+
+    let web3, contract, account;
+
+    async function init() {
+      if (window.ethereum) {
+        web3 = new Web3(window.ethereum);
+        await ethereum.request({ method: 'eth_requestAccounts' });
+        const accounts = await web3.eth.getAccounts();
+        account = accounts[0];
+        document.getElementById("wallet").innerText = account;
+
+        contract = new web3.eth.Contract(ABI, CONTRACT_ADDRESS);
+
+        const directs = await contract.methods.getDirects(account).call();
+        document.getElementById("directs").innerText = directs.length;
+
+        const eligible = await contract.methods.isEligible(account).call();
+        document.getElementById("eligible").innerText = eligible ? "Yes" : "No";
+
+        const month = Math.floor(Date.now() / 1000 / (30 * 24 * 60 * 60)) - 1;
+        const claimed = await contract.methods.hasClaimed(account, month).call();
+        document.getElementById("claimed").innerText = claimed ? "Yes" : "No";
+      } else {
+        alert("Please install MetaMask to use this dApp.");
+      }
+    }
+
+    async function joinMLM() {
+      const referrer = document.getElementById("referrer").value;
+      if (!web3.utils.isAddress(referrer)) {
+        alert("Invalid referrer address");
+        return;
+      }
+
+      try {
+        await contract.methods.join(referrer).send({ from: account });
+        alert("Joined successfully!");
+        location.reload();
+      } catch (err) {
+        console.error(err);
+        alert("Join failed!");
+      }
+    }
+
+    async function claimDividend() {
+      try {
+        await contract.methods.claimDividend().send({ from: account });
+        alert("Dividend claimed!");
+        location.reload();
+      }
