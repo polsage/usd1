@@ -13,7 +13,7 @@
 </head>
 <body>
 
-  <h2>USD1 MLM Dashboard</h2>
+  <h2>USD1 MLM Dashboard (BNB Chain)</h2>
   <button onclick="connectWallet()">Connect Wallet</button>
 
   <div class="card">
@@ -39,95 +39,92 @@
     const CONTRACT_ADDRESS = "0x528C40478b9a0dd180C1DB47141e285fF00c4fCA";
     const USD1_TOKEN_ADDRESS = "0x8d0D000Ee44948FC98c9B98A4FA4921476f08B0d";
     const ABI = [
-	{
-		"inputs": [
-			{
-				"internalType": "address",
-				"name": "recipient",
-				"type": "address"
-			},
-			{
-				"internalType": "uint256",
-				"name": "amount",
-				"type": "uint256"
-			}
-		],
-		"name": "transfer",
-		"outputs": [
-			{
-				"internalType": "bool",
-				"name": "",
-				"type": "bool"
-			}
-		],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "address",
-				"name": "sender",
-				"type": "address"
-			},
-			{
-				"internalType": "address",
-				"name": "recipient",
-				"type": "address"
-			},
-			{
-				"internalType": "uint256",
-				"name": "amount",
-				"type": "uint256"
-			}
-		],
-		"name": "transferFrom",
-		"outputs": [
-			{
-				"internalType": "bool",
-				"name": "",
-				"type": "bool"
-			}
-		],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	}
-];
-    const ERC20_ABI = [
-      { "constant": false, "inputs": [ {"name": "_spender", "type": "address"}, {"name": "_value", "type": "uint256"} ], "name": "approve", "outputs": [ {"name": "", "type": "bool"} ], "type": "function" },
-      { "constant": true, "inputs": [ {"name": "_owner", "type": "address"}, {"name": "_spender", "type": "address"} ], "name": "allowance", "outputs": [ {"name": "", "type": "uint256"} ], "type": "function" }
+      {
+        "constant": false,
+        "inputs": [
+          {"name": "_spender", "type": "address"},
+          {"name": "_value", "type": "uint256"}
+        ],
+        "name": "approve",
+        "outputs": [{"name": "", "type": "bool"}],
+        "type": "function"
+      },
+      {
+        "constant": true,
+        "inputs": [
+          {"name": "_owner", "type": "address"},
+          {"name": "_spender", "type": "address"}
+        ],
+        "name": "allowance",
+        "outputs": [{"name": "", "type": "uint256"}],
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {"internalType": "address", "name": "recipient", "type": "address"},
+          {"internalType": "uint256", "name": "amount", "type": "uint256"}
+        ],
+        "name": "transfer",
+        "outputs": [{"internalType": "bool", "name": "", "type": "bool"}],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {"internalType": "address", "name": "sender", "type": "address"},
+          {"internalType": "address", "name": "recipient", "type": "address"},
+          {"internalType": "uint256", "name": "amount", "type": "uint256"}
+        ],
+        "name": "transferFrom",
+        "outputs": [{"internalType": "bool", "name": "", "type": "bool"}],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      }
     ];
 
+    const ERC20_ABI = ABI;
     let web3, contract, token, account;
 
     async function connectWallet() {
       if (window.ethereum) {
-        web3 = new Web3(window.ethereum);
-        await ethereum.request({ method: 'eth_requestAccounts' });
-        const accounts = await web3.eth.getAccounts();
-        account = accounts[0];
-        document.getElementById("wallet").innerText = account;
+        try {
+          web3 = new Web3(window.ethereum);
+          await window.ethereum.request({ method: 'eth_requestAccounts' });
+          const accounts = await web3.eth.getAccounts();
+          account = accounts[0];
+          document.getElementById("wallet").innerText = account;
 
-        contract = new web3.eth.Contract(ABI, CONTRACT_ADDRESS);
-        token = new web3.eth.Contract(ERC20_ABI, USD1_TOKEN_ADDRESS);
+          contract = new web3.eth.Contract(ABI, CONTRACT_ADDRESS);
+          token = new web3.eth.Contract(ERC20_ABI, USD1_TOKEN_ADDRESS);
 
-        const directs = await contract.methods.getDirects(account).call();
-        document.getElementById("directs").innerText = directs.length;
+          document.getElementById("refLink").innerText = `${window.location.origin}${window.location.pathname}?ref=${account}`;
 
-        const eligible = await contract.methods.isEligible(account).call();
-        document.getElementById("eligible").innerText = eligible ? "Yes" : "No";
+          const urlParams = new URLSearchParams(window.location.search);
+          const ref = urlParams.get("ref");
+          if (ref && web3.utils.isAddress(ref)) {
+            document.getElementById("referrer").value = ref;
+          }
 
-        const month = Math.floor(Date.now() / 1000 / (30 * 24 * 60 * 60)) - 1;
-        const claimed = await contract.methods.hasClaimed(account, month).call();
-        document.getElementById("claimed").innerText = claimed ? "Yes" : "No";
+          // These contract methods are assumed and must exist in your contract
+          try {
+            const directs = await contract.methods.getDirects(account).call();
+            document.getElementById("directs").innerText = directs.length || 0;
+          } catch {}
 
-        document.getElementById("refLink").innerText = `${window.location.origin}${window.location.pathname}?ref=${account}`;
+          try {
+            const eligible = await contract.methods.isEligible(account).call();
+            document.getElementById("eligible").innerText = eligible ? "Yes" : "No";
+          } catch {}
 
-        // Auto-fill referrer from URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const ref = urlParams.get("ref");
-        if (ref && web3.utils.isAddress(ref)) {
-          document.getElementById("referrer").value = ref;
+          try {
+            const month = Math.floor(Date.now() / 1000 / (30 * 24 * 60 * 60)) - 1;
+            const claimed = await contract.methods.hasClaimed(account, month).call();
+            document.getElementById("claimed").innerText = claimed ? "Yes" : "No";
+          } catch {}
+
+        } catch (error) {
+          console.error("Wallet connection failed:", error);
+          alert("Failed to connect wallet. Please try again.");
         }
       } else {
         alert("Please install MetaMask to use this dApp.");
@@ -143,10 +140,9 @@
 
       try {
         const allowance = await token.methods.allowance(account, CONTRACT_ADDRESS).call();
-        if (parseInt(allowance) < 20000000) { // assuming 6 decimals
+        if (parseInt(allowance) < 20000000) {
           await token.methods.approve(CONTRACT_ADDRESS, "20000000").send({ from: account });
         }
-
         await contract.methods.join(referrer).send({ from: account });
         alert("Joined successfully!");
         location.reload();
@@ -158,4 +154,14 @@
 
     async function claimDividend() {
       try {
-        awai
+        await contract.methods.claimDividend().send({ from: account });
+        alert("Dividend claimed!");
+        location.reload();
+      } catch (err) {
+        console.error(err);
+        alert("Claim failed!");
+      }
+    }
+  </script>
+</body>
+</html>
