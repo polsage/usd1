@@ -53,51 +53,25 @@
   <script>
     const CONTRACT_ADDRESS = "0xc08d415Ee020db072fDf103e3Ae3E5Bda0340440";
     const USD1_TOKEN_ADDRESS = "0x8d0D000Ee44948FC98c9B98A4FA4921476f08B0d";
-    const ABI = [
-      {
-        "constant": false,
-        "inputs": [
-          {"name": "_spender", "type": "address"},
-          {"name": "_value", "type": "uint256"}
-        ],
-        "name": "approve",
-        "outputs": [{"name": "", "type": "bool"}],
-        "type": "function"
-      },
-      {
-        "constant": true,
-        "inputs": [
-          {"name": "_owner", "type": "address"},
-          {"name": "_spender", "type": "address"}
-        ],
-        "name": "allowance",
-        "outputs": [{"name": "", "type": "uint256"}],
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {"internalType": "address", "name": "recipient", "type": "address"},
-          {"internalType": "uint256", "name": "amount", "type": "uint256"}
-        ],
-        "name": "transfer",
-        "outputs": [{"internalType": "bool", "name": "", "type": "bool"}],
-        "stateMutability": "nonpayable",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {"internalType": "address", "name": "sender", "type": "address"},
-          {"internalType": "address", "name": "recipient", "type": "address"},
-          {"internalType": "uint256", "name": "amount", "type": "uint256"}
-        ],
-        "name": "transferFrom",
-        "outputs": [{"internalType": "bool", "name": "", "type": "bool"}],
-        "stateMutability": "nonpayable",
-        "type": "function"
-      }
+
+    const MLM_ABI = [
+      {"inputs":[{"internalType":"address","name":"referrer","type":"address"}],"name":"join","outputs":[],"stateMutability":"nonpayable","type":"function"},
+      {"inputs":[],"name":"claimDividend","outputs":[],"stateMutability":"nonpayable","type":"function"},
+      {"inputs":[],"name":"withdraw","outputs":[],"stateMutability":"nonpayable","type":"function"},
+      {"inputs":[{"internalType":"address","name":"user","type":"address"}],"name":"getDirects","outputs":[{"internalType":"address[]","name":"","type":"address[]"}],"stateMutability":"view","type":"function"},
+      {"inputs":[{"internalType":"address","name":"user","type":"address"}],"name":"getUplines","outputs":[{"internalType":"address[]","name":"","type":"address[]"}],"stateMutability":"view","type":"function"},
+      {"inputs":[{"internalType":"address","name":"user","type":"address"}],"name":"getEarnings","outputs":[{"internalType":"uint256[]","name":"","type":"uint256[]"}],"stateMutability":"view","type":"function"},
+      {"inputs":[{"internalType":"address","name":"user","type":"address"}],"name":"isEligible","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},
+      {"inputs":[{"internalType":"address","name":"user","type":"address"},{"internalType":"uint256","name":"month","type":"uint256"}],"name":"hasClaimed","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"}
     ];
 
-    const ERC20_ABI = ABI;
+    const ERC20_ABI = [
+      {"constant":true,"inputs":[{"name":"_owner","type":"address"},{"name":"_spender","type":"address"}],"name":"allowance","outputs":[{"name":"","type":"uint256"}],"type":"function"},
+      {"constant":false,"inputs":[{"name":"_spender","type":"address"},{"name":"_value","type":"uint256"}],"name":"approve","outputs":[{"name":"","type":"bool"}],"type":"function"},
+      {"constant":false,"inputs":[{"name":"_to","type":"address"},{"name":"_value","type":"uint256"}],"name":"transfer","outputs":[{"name":"","type":"bool"}],"type":"function"},
+      {"constant":false,"inputs":[{"name":"_from","type":"address"},{"name":"_to","type":"address"},{"name":"_value","type":"uint256"}],"name":"transferFrom","outputs":[{"name":"","type":"bool"}],"type":"function"}
+    ];
+
     let web3, contract, token, account;
 
     async function connectWallet() {
@@ -110,7 +84,7 @@
           document.getElementById("wallet").innerText = account;
           document.getElementById("connectBtn").style.display = 'none';
 
-          contract = new web3.eth.Contract(ABI, CONTRACT_ADDRESS);
+          contract = new web3.eth.Contract(MLM_ABI, CONTRACT_ADDRESS);
           token = new web3.eth.Contract(ERC20_ABI, USD1_TOKEN_ADDRESS);
 
           document.getElementById("refLink").innerText = `${window.location.origin}${window.location.pathname}?ref=${account}`;
@@ -121,43 +95,33 @@
             document.getElementById("referrer").value = ref;
           }
 
-          try {
-            const directs = await contract.methods.getDirects(account).call();
-            document.getElementById("directs").innerText = directs.length || 0;
-          } catch {}
+          const directs = await contract.methods.getDirects(account).call();
+          document.getElementById("directs").innerText = directs.length || 0;
 
-          try {
-            const eligible = await contract.methods.isEligible(account).call();
-            document.getElementById("eligible").innerText = eligible ? "Yes" : "No";
-          } catch {}
+          const eligible = await contract.methods.isEligible(account).call();
+          document.getElementById("eligible").innerText = eligible ? "Yes" : "No";
 
-          try {
-            const month = Math.floor(Date.now() / 1000 / (30 * 24 * 60 * 60)) - 1;
-            const claimed = await contract.methods.hasClaimed(account, month).call();
-            document.getElementById("claimed").innerText = claimed ? "Yes" : "No";
-          } catch {}
+          const month = Math.floor(Date.now() / 1000 / (30 * 24 * 60 * 60)) - 1;
+          const claimed = await contract.methods.hasClaimed(account, month).call();
+          document.getElementById("claimed").innerText = claimed ? "Yes" : "No";
 
-          try {
-            const uplines = await contract.methods.getUplines(account).call();
-            const uplist = document.getElementById("uplines");
-            uplist.innerHTML = "";
-            uplines.slice(0, 10).forEach((upline, i) => {
-              const li = document.createElement("li");
-              li.textContent = `Level ${i + 1}: ${upline}`;
-              uplist.appendChild(li);
-            });
-          } catch {}
+          const uplines = await contract.methods.getUplines(account).call();
+          const uplist = document.getElementById("uplines");
+          uplist.innerHTML = "";
+          uplines.slice(0, 10).forEach((upline, i) => {
+            const li = document.createElement("li");
+            li.textContent = `Level ${i + 1}: ${upline}`;
+            uplist.appendChild(li);
+          });
 
-          try {
-            const earnings = await contract.methods.getEarnings(account).call();
-            const earnlist = document.getElementById("earnings");
-            earnlist.innerHTML = "";
-            earnings.forEach((e, i) => {
-              const li = document.createElement("li");
-              li.textContent = `Level ${i + 1}: $${web3.utils.fromWei(e, 'ether')}`;
-              earnlist.appendChild(li);
-            });
-          } catch {}
+          const earnings = await contract.methods.getEarnings(account).call();
+          const earnlist = document.getElementById("earnings");
+          earnlist.innerHTML = "";
+          earnings.forEach((e, i) => {
+            const li = document.createElement("li");
+            li.textContent = `Level ${i + 1}: $${web3.utils.fromWei(e, 'ether')}`;
+            earnlist.appendChild(li);
+          });
 
         } catch (error) {
           console.error("Wallet connection failed:", error);
@@ -168,9 +132,7 @@
       }
     }
 
-    window.addEventListener('load', () => {
-      connectWallet();
-    });
+    window.addEventListener('load', connectWallet);
 
     async function joinMLM() {
       const referrer = document.getElementById("referrer").value;
@@ -180,9 +142,10 @@
       }
 
       try {
+        const amount = web3.utils.toWei("20", "ether");
         const allowance = await token.methods.allowance(account, CONTRACT_ADDRESS).call();
-        if (parseInt(allowance) < 20000000) {
-          await token.methods.approve(CONTRACT_ADDRESS, "20000000").send({ from: account });
+        if (BigInt(allowance) < BigInt(amount)) {
+          await token.methods.approve(CONTRACT_ADDRESS, amount).send({ from: account });
         }
         await contract.methods.join(referrer).send({ from: account });
         alert("Joined successfully!");
