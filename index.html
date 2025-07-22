@@ -1,182 +1,102 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8">
   <title>USD1 MLM Dashboard</title>
-  <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/web3@1.8.2/dist/web3.min.js"></script>
   <style>
-    body { font-family: Arial; padding: 20px; background: #f5f5f5; }
-    .card { background: #fff; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 0 10px rgba(0,0,0,0.05); }
-    input, button { padding: 10px; margin-top: 5px; width: 100%; font-size: 16px; margin-bottom: 10px; }
-    button { background: #007bff; color: white; border: none; cursor: pointer; border-radius: 6px; }
-    button:hover { background: #0056b3; }
+    body { font-family: Arial, sans-serif; padding: 20px; background-color: #f0f0f0; }
+    .container { background: white; padding: 20px; border-radius: 10px; max-width: 600px; margin: auto; }
+    h2 { text-align: center; }
+    button { margin: 10px 0; padding: 10px; width: 100%; }
+    input { width: 100%; padding: 10px; margin-top: 5px; margin-bottom: 10px; }
+    .info { margin: 10px 0; padding: 10px; background: #eef; border-radius: 5px; }
   </style>
 </head>
 <body>
+  <div class="container">
+    <h2>USD1 MLM Dashboard</h2>
+    <div id="wallet">Connecting wallet...</div>
 
-  <h2>USD1 MLM Dashboard (BNB Chain)</h2>
-  <button id="connectBtn" onclick="connectWallet()">Connect Wallet</button>
+    <input type="text" id="refInput" placeholder="Referrer Address (Optional)" />
+    <button onclick="approveAndJoin()">Join Now ($20 USD1)</button>
 
-  <div class="card">
-    <p><strong>Wallet Address:</strong> <span id="wallet">Not Connected</span></p>
-    <p><strong>Total Direct Referrals:</strong> <span id="directs">-</span></p>
-    <p><strong>Eligible for Dividend:</strong> <span id="eligible">-</span></p>
-    <p><strong>Dividend Claimed (Last Month):</strong> <span id="claimed">-</span></p>
-  </div>
+    <div class="info" id="status"></div>
+    <div class="info" id="referrals"></div>
+    <div class="info" id="dividends"></div>
+    <div class="info" id="uplines"></div>
 
-  <div class="card">
-    <h4>Join MLM</h4>
-    <input type="text" id="referrer" placeholder="Enter referrer address" />
-    <button onclick="joinMLM()">Join for $20 USD1</button>
-    <p>Share your referral URL: <span id="refLink"></span></p>
-  </div>
-
-  <div class="card">
-    <h4>Claim Monthly Dividend</h4>
-    <button onclick="claimDividend()">Claim Dividend</button>
-  </div>
-
-  <div class="card">
-    <h4>10-Level Uplines</h4>
-    <ol id="uplines"></ol>
-  </div>
-
-  <div class="card">
-    <h4>Earnings History</h4>
-    <ul id="earnings"></ul>
-  </div>
-
-  <div class="card">
-    <h4>Withdraw Balance</h4>
-    <button onclick="withdrawEarnings()">Withdraw</button>
+    <button onclick="withdrawEarnings()">Withdraw Earnings</button>
   </div>
 
   <script>
     const CONTRACT_ADDRESS = "0x9327cc658ebb75a67eB491C480Fe5Bc100a17282";
-    const USD1_TOKEN_ADDRESS = "0x8d0D000Ee44948FC98c9B98A4FA4921476f08B0d";
+    const USD1_ADDRESS = "0x8d0D000Ee44948FC98c9B98A4FA4921476f08B0d"; // USD1 Token
+    let web3, account, contract, token;
 
-    const MLM_ABI = [
+    const CONTRACT_ABI = [
       {"inputs":[{"internalType":"address","name":"referrer","type":"address"}],"name":"join","outputs":[],"stateMutability":"nonpayable","type":"function"},
-      {"inputs":[],"name":"claimDividend","outputs":[],"stateMutability":"nonpayable","type":"function"},
-      {"inputs":[],"name":"withdraw","outputs":[],"stateMutability":"nonpayable","type":"function"},
-      {"inputs":[{"internalType":"address","name":"user","type":"address"}],"name":"getDirects","outputs":[{"internalType":"address[]","name":"","type":"address[]"}],"stateMutability":"view","type":"function"},
-      {"inputs":[{"internalType":"address","name":"user","type":"address"}],"name":"getUplines","outputs":[{"internalType":"address[]","name":"","type":"address[]"}],"stateMutability":"view","type":"function"},
-      {"inputs":[{"internalType":"address","name":"user","type":"address"}],"name":"getEarnings","outputs":[{"internalType":"uint256[]","name":"","type":"uint256[]"}],"stateMutability":"view","type":"function"},
-      {"inputs":[{"internalType":"address","name":"user","type":"address"}],"name":"isEligible","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},
-      {"inputs":[{"internalType":"address","name":"user","type":"address"},{"internalType":"uint256","name":"month","type":"uint256"}],"name":"hasClaimed","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"}
+      {"inputs":[],"name":"getReferralCount","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+      {"inputs":[],"name":"getDividendInfo","outputs":[{"internalType":"bool","name":"eligible","type":"bool"},{"internalType":"uint256","name":"amount","type":"uint256"}],"stateMutability":"view","type":"function"},
+      {"inputs":[],"name":"getUplines","outputs":[{"internalType":"address[10]","name":"","type":"address[10]"}],"stateMutability":"view","type":"function"},
+      {"inputs":[],"name":"withdraw","outputs":[],"stateMutability":"nonpayable","type":"function"}
     ];
 
     const ERC20_ABI = [
-      {"constant":true,"inputs":[{"name":"_owner","type":"address"},{"name":"_spender","type":"address"}],"name":"allowance","outputs":[{"name":"","type":"uint256"}],"type":"function"},
-      {"constant":false,"inputs":[{"name":"_spender","type":"address"},{"name":"_value","type":"uint256"}],"name":"approve","outputs":[{"name":"","type":"bool"}],"type":"function"},
-      {"constant":false,"inputs":[{"name":"_to","type":"address"},{"name":"_value","type":"uint256"}],"name":"transfer","outputs":[{"name":"","type":"bool"}],"type":"function"},
-      {"constant":false,"inputs":[{"name":"_from","type":"address"},{"name":"_to","type":"address"},{"name":"_value","type":"uint256"}],"name":"transferFrom","outputs":[{"name":"","type":"bool"}],"type":"function"}
+      {"constant":true,"inputs":[{"name":"owner","type":"address"},{"name":"spender","type":"address"}],"name":"allowance","outputs":[{"name":"","type":"uint256"}],"type":"function"},
+      {"constant":false,"inputs":[{"name":"spender","type":"address"},{"name":"value","type":"uint256"}],"name":"approve","outputs":[{"name":"","type":"bool"}],"type":"function"}
     ];
-
-    let web3, contract, token, account;
 
     async function connectWallet() {
       if (window.ethereum) {
-        try {
-          web3 = new Web3(window.ethereum);
-          await window.ethereum.request({ method: 'eth_requestAccounts' });
-          const accounts = await web3.eth.getAccounts();
-          account = accounts[0];
-          document.getElementById("wallet").innerText = account;
-          document.getElementById("connectBtn").style.display = 'none';
+        web3 = new Web3(window.ethereum);
+        await window.ethereum.request({ method: 'eth_requestAccounts' });
+        const accounts = await web3.eth.getAccounts();
+        account = accounts[0];
+        document.getElementById("wallet").innerText = `Connected: ${account}`;
 
-          contract = new web3.eth.Contract(MLM_ABI, CONTRACT_ADDRESS);
-          token = new web3.eth.Contract(ERC20_ABI, USD1_TOKEN_ADDRESS);
+        contract = new web3.eth.Contract(CONTRACT_ABI, CONTRACT_ADDRESS);
+        token = new web3.eth.Contract(ERC20_ABI, USD1_ADDRESS);
 
-          document.getElementById("refLink").innerText = `${window.location.origin}${window.location.pathname}?ref=${account}`;
-
-          const urlParams = new URLSearchParams(window.location.search);
-          const ref = urlParams.get("ref");
-          if (ref && web3.utils.isAddress(ref)) {
-            document.getElementById("referrer").value = ref;
-          }
-
-          const directs = await contract.methods.getDirects(account).call();
-          document.getElementById("directs").innerText = directs.length || 0;
-
-          const eligible = await contract.methods.isEligible(account).call();
-          document.getElementById("eligible").innerText = eligible ? "Yes" : "No";
-
-          const month = Math.floor(Date.now() / 1000 / (30 * 24 * 60 * 60)) - 1;
-          const claimed = await contract.methods.hasClaimed(account, month).call();
-          document.getElementById("claimed").innerText = claimed ? "Yes" : "No";
-
-          const uplines = await contract.methods.getUplines(account).call();
-          const uplist = document.getElementById("uplines");
-          uplist.innerHTML = "";
-          uplines.slice(0, 10).forEach((upline, i) => {
-            const li = document.createElement("li");
-            li.textContent = `Level ${i + 1}: ${upline}`;
-            uplist.appendChild(li);
-          });
-
-          const earnings = await contract.methods.getEarnings(account).call();
-          const earnlist = document.getElementById("earnings");
-          earnlist.innerHTML = "";
-          earnings.forEach((e, i) => {
-            const li = document.createElement("li");
-            li.textContent = `Level ${i + 1}: $${web3.utils.fromWei(e, 'ether')}`;
-            earnlist.appendChild(li);
-          });
-
-        } catch (error) {
-          console.error("Wallet connection failed:", error);
-          alert("Failed to connect wallet. Please try again.");
-        }
+        loadInfo();
       } else {
-        alert("Please install MetaMask to use this dApp.");
+        alert("Please install MetaMask.");
       }
     }
 
-    window.addEventListener('load', connectWallet);
+    async function approveAndJoin() {
+      const ref = document.getElementById("refInput").value || account;
+      const allowance = await token.methods.allowance(account, CONTRACT_ADDRESS).call();
+      const required = web3.utils.toWei("20", "ether");
 
-    async function joinMLM() {
-      const referrer = document.getElementById("referrer").value;
-      if (!web3.utils.isAddress(referrer)) {
-        alert("Invalid referrer address");
-        return;
+      if (parseInt(allowance) < required) {
+        document.getElementById("status").innerText = "Approving $20 USD1...";
+        await token.methods.approve(CONTRACT_ADDRESS, required).send({ from: account });
       }
 
-      try {
-        const amount = web3.utils.toWei("20", "ether");
-        const allowance = await token.methods.allowance(account, CONTRACT_ADDRESS).call();
-        if (BigInt(allowance) < BigInt(amount)) {
-          await token.methods.approve(CONTRACT_ADDRESS, amount).send({ from: account });
-        }
-        await contract.methods.join(referrer).send({ from: account });
-        alert("Joined successfully!");
-        location.reload();
-      } catch (err) {
-        console.error(err);
-        alert("Join failed!");
-      }
+      document.getElementById("status").innerText = "Joining system...";
+      await contract.methods.join(ref).send({ from: account });
+      document.getElementById("status").innerText = "Joined successfully!";
+      loadInfo();
     }
 
-    async function claimDividend() {
-      try {
-        await contract.methods.claimDividend().send({ from: account });
-        alert("Dividend claimed!");
-        location.reload();
-      } catch (err) {
-        console.error(err);
-        alert("Claim failed!");
-      }
+    async function loadInfo() {
+      const count = await contract.methods.getReferralCount().call({ from: account });
+      const dividend = await contract.methods.getDividendInfo().call({ from: account });
+      const uplines = await contract.methods.getUplines().call({ from: account });
+
+      document.getElementById("referrals").innerText = `Direct Referrals: ${count}`;
+      document.getElementById("dividends").innerText = dividend.eligible ? `Eligible Dividend: ${web3.utils.fromWei(dividend.amount)} USD1` : `Not eligible for dividend`;
+      document.getElementById("uplines").innerText = `10 Uplines: \n${uplines.filter(x => x !== "0x77bee8da0DCeE21a4ad406F7Ca6494e9C8CD7e71").join("\n")}`;
     }
 
     async function withdrawEarnings() {
-      try {
-        await contract.methods.withdraw().send({ from: account });
-        alert("Withdrawal successful!");
-        location.reload();
-      } catch (err) {
-        console.error(err);
-        alert("Withdrawal failed!");
-      }
+      document.getElementById("status").innerText = "Withdrawing...";
+      await contract.methods.withdraw().send({ from: account });
+      document.getElementById("status").innerText = "Withdrawal complete.";
     }
+
+    window.addEventListener("load", connectWallet);
   </script>
 </body>
 </html>
