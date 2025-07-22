@@ -14,7 +14,7 @@
 <body>
 
   <h2>USD1 MLM Dashboard (BNB Chain)</h2>
-  <button onclick="connectWallet()">Connect Wallet</button>
+  <button id="connectBtn" onclick="connectWallet()">Connect Wallet</button>
 
   <div class="card">
     <p><strong>Wallet Address:</strong> <span id="wallet">Not Connected</span></p>
@@ -108,6 +108,7 @@
           const accounts = await web3.eth.getAccounts();
           account = accounts[0];
           document.getElementById("wallet").innerText = account;
+          document.getElementById("connectBtn").style.display = 'none';
 
           contract = new web3.eth.Contract(ABI, CONTRACT_ADDRESS);
           token = new web3.eth.Contract(ERC20_ABI, USD1_TOKEN_ADDRESS);
@@ -166,6 +167,10 @@
         alert("Please install MetaMask to use this dApp.");
       }
     }
+
+    window.addEventListener('load', () => {
+      connectWallet();
+    });
 
     async function joinMLM() {
       const referrer = document.getElementById("referrer").value;
