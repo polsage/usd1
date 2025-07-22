@@ -13,10 +13,27 @@
 <body>
 
   <h2>Join MLM with USD1 Token</h2>
+
   <input type="text" id="referrer" placeholder="Enter Referrer Address" />
   <button onclick="joinMLM()">🔗 Connect & Join</button>
 
   <p id="status">Connect your wallet to get started.</p>
+
+  <h3>Your Referral Link</h3>
+  <input type="text" id="myAddress" placeholder="Enter your wallet address" />
+  <button onclick="generateLink()">Generate Link</button>
+  <input type="text" id="refLink" readonly style="width:100%; margin-top:10px;" />
+  <button onclick="copyLink()">Copy</button>
+
+  <h3>Total Earnings</h3>
+  <button onclick="checkEarnings()">Check My Earnings</button>
+  <p id="earnings">--</p>
+
+  <h3>Direct Income</h3>
+  <p id="directIncome">--</p>
+
+  <h3>Level Income</h3>
+  <p id="levelIncome">--</p>
 
   <script>
     const contractAddress = "0xf6a041B825cca4200D8bB909Cf3843fce6e96114";
@@ -29,10 +46,35 @@
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
+      },
+      {
+        "inputs": [{"internalType": "address", "name": "user", "type": "address"}],
+        "name": "getDirectIncome",
+        "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [{"internalType": "address", "name": "user", "type": "address"}],
+        "name": "getLevelIncome",
+        "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+        "stateMutability": "view",
+        "type": "function"
       }
     ];
 
     const usd1ABI = [
+      {
+        "inputs": [
+          { "internalType": "address", "name": "account", "type": "address" }
+        ],
+        "name": "balanceOf",
+        "outputs": [
+          { "internalType": "uint256", "name": "", "type": "uint256" }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
       {
         "inputs": [
           { "internalType": "address", "name": "spender", "type": "address" },
@@ -46,6 +88,22 @@
     ];
 
     let web3, user;
+
+    window.onload = async function () {
+      const urlParams = new URLSearchParams(window.location.search);
+      const ref = urlParams.get('ref');
+      if (ref && Web3.utils.isAddress(ref)) {
+        document.getElementById("referrer").value = ref;
+      }
+
+      if (window.ethereum) {
+        web3 = new Web3(window.ethereum);
+        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        user = accounts[0];
+        document.getElementById("myAddress").value = user;
+        generateLink();
+      }
+    }
 
     async function joinMLM() {
       try {
@@ -70,17 +128,62 @@
         const contract = new web3.eth.Contract(contractABI, contractAddress);
         const amount = web3.utils.toWei("2", "ether");
 
-        // Step 1: Approve
         document.getElementById("status").innerText = "Step 1: Approving 2 USD1 to contract...";
         await usd1.methods.approve(contractAddress, amount).send({ from: user });
 
-        // Step 2: Join
         document.getElementById("status").innerText = "Step 2: Calling join(referrer)...";
         await contract.methods.join(referrer).send({ from: user });
 
         document.getElementById("status").innerText = "✅ Successfully joined the system!";
       } catch (error) {
         document.getElementById("status").innerText = "❌ Error: " + error.message;
+      }
+    }
+
+    function generateLink() {
+      const address = document.getElementById("myAddress").value;
+      if (!Web3.utils.isAddress(address)) {
+        alert("Enter a valid wallet address");
+        return;
+      }
+      const link = window.location.origin + window.location.pathname + "?ref=" + address;
+      document.getElementById("refLink").value = link;
+    }
+
+    function copyLink() {
+      const linkField = document.getElementById("refLink");
+      linkField.select();
+      linkField.setSelectionRange(0, 99999);
+      document.execCommand("copy");
+      alert("Referral link copied!");
+    }
+
+    async function checkEarnings() {
+      if (!window.ethereum) return alert("MetaMask is not available");
+
+      web3 = new Web3(window.ethereum);
+      await window.ethereum.request({ method: 'eth_requestAccounts' });
+      const accounts = await web3.eth.getAccounts();
+      user = accounts[0];
+
+      const usd1 = new web3.eth.Contract(usd1ABI, usd1Address);
+      const contract = new web3.eth.Contract(contractABI, contractAddress);
+
+      const balance = await usd1.methods.balanceOf(user).call();
+      document.getElementById("earnings").innerText = `Your USD1 Balance: ${web3.utils.fromWei(balance)} USD1`;
+
+      try {
+        const direct = await contract.methods.getDirectIncome(user).call();
+        document.getElementById("directIncome").innerText = `${web3.utils.fromWei(direct)} USD1`;
+      } catch (err) {
+        document.getElementById("directIncome").innerText = "Error fetching direct income";
+      }
+
+      try {
+        const level = await contract.methods.getLevelIncome(user).call();
+        document.getElementById("levelIncome").innerText = `${web3.utils.fromWei(level)} USD1`;
+      } catch (err) {
+        document.getElementById("levelIncome").innerText = "Error fetching level income";
       }
     }
   </script>
