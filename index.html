@@ -2,49 +2,35 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>USD1 MLM Dashboard</title>
+  <title>Join USD1 MLM</title>
   <script src="https://cdn.jsdelivr.net/npm/web3@1.8.2/dist/web3.min.js"></script>
   <style>
-    body { font-family: Arial, sans-serif; padding: 20px; background-color: #f0f0f0; }
-    .container { background: white; padding: 20px; border-radius: 10px; max-width: 600px; margin: auto; }
-    h2 { text-align: center; }
-    button { margin: 10px 0; padding: 10px; width: 100%; }
-    input { width: 100%; padding: 10px; margin-top: 5px; margin-bottom: 10px; }
-    .info { margin: 10px 0; padding: 10px; background: #eef; border-radius: 5px; }
+    body { font-family: Arial; background: #f2f2f2; padding: 30px; }
+    .box { background: #fff; padding: 20px; border-radius: 10px; max-width: 400px; margin: auto; }
+    input, button { width: 100%; padding: 10px; margin-top: 10px; }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h2>USD1 MLM Dashboard</h2>
-    <div id="wallet">Connecting wallet...</div>
-
-    <input type="text" id="refInput" placeholder="Referrer Address (Optional)" />
-    <button onclick="approveAndJoin()">Join Now ($20 USD1)</button>
-
-    <div class="info" id="status"></div>
-    <div class="info" id="referrals"></div>
-    <div class="info" id="dividends"></div>
-    <div class="info" id="uplines"></div>
-
-    <button onclick="withdrawEarnings()">Withdraw Earnings</button>
+  <div class="box">
+    <h2>Join USD1 MLM</h2>
+    <div id="wallet">Connecting...</div>
+    <input type="text" id="refInput" placeholder="Referrer Address (optional)" />
+    <button onclick="approveAndJoin()">Join Now ($2 USD1)</button>
+    <div id="status"></div>
   </div>
 
   <script>
     const CONTRACT_ADDRESS = "0xd0B3F5DB3Ed55B3e7A62d23887BD9A2F49bA3f1a";
-    const USD1_ADDRESS = "0x8d0D000Ee44948FC98c9B98A4FA4921476f08B0d"; // USD1 Token
+    const USD1_ADDRESS = "0x8d0D000Ee44948FC98c9B98A4FA4921476f08B0d";
     let web3, account, contract, token;
 
     const CONTRACT_ABI = [
-      {"inputs":[{"internalType":"address","name":"referrer","type":"address"}],"name":"join","outputs":[],"stateMutability":"nonpayable","type":"function"},
-      {"inputs":[],"name":"getReferralCount","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
-      {"inputs":[],"name":"getDividendInfo","outputs":[{"internalType":"bool","name":"eligible","type":"bool"},{"internalType":"uint256","name":"amount","type":"uint256"}],"stateMutability":"view","type":"function"},
-      {"inputs":[],"name":"getUplines","outputs":[{"internalType":"address[10]","name":"","type":"address[10]"}],"stateMutability":"view","type":"function"},
-      {"inputs":[],"name":"withdraw","outputs":[],"stateMutability":"nonpayable","type":"function"}
+      { "inputs": [{ "internalType": "address", "name": "referrer", "type": "address" }], "name": "join", "outputs": [], "stateMutability": "nonpayable", "type": "function" }
     ];
 
     const ERC20_ABI = [
-      {"constant":true,"inputs":[{"name":"owner","type":"address"},{"name":"spender","type":"address"}],"name":"allowance","outputs":[{"name":"","type":"uint256"}],"type":"function"},
-      {"constant":false,"inputs":[{"name":"spender","type":"address"},{"name":"value","type":"uint256"}],"name":"approve","outputs":[{"name":"","type":"bool"}],"type":"function"}
+      { "constant": true, "inputs": [{ "name": "owner", "type": "address" }, { "name": "spender", "type": "address" }], "name": "allowance", "outputs": [{ "name": "", "type": "uint256" }], "type": "function" },
+      { "constant": false, "inputs": [{ "name": "spender", "type": "address" }, { "name": "value", "type": "uint256" }], "name": "approve", "outputs": [{ "name": "", "type": "bool" }], "type": "function" }
     ];
 
     async function connectWallet() {
@@ -54,11 +40,8 @@
         const accounts = await web3.eth.getAccounts();
         account = accounts[0];
         document.getElementById("wallet").innerText = `Connected: ${account}`;
-
         contract = new web3.eth.Contract(CONTRACT_ABI, CONTRACT_ADDRESS);
         token = new web3.eth.Contract(ERC20_ABI, USD1_ADDRESS);
-
-        loadInfo();
       } else {
         alert("Please install MetaMask.");
       }
@@ -67,33 +50,16 @@
     async function approveAndJoin() {
       const ref = document.getElementById("refInput").value || account;
       const allowance = await token.methods.allowance(account, CONTRACT_ADDRESS).call();
-      const required = web3.utils.toWei("20", "ether");
+      const required = web3.utils.toWei("2", "ether");
 
       if (parseInt(allowance) < required) {
-        document.getElementById("status").innerText = "Approving $20 USD1...";
+        document.getElementById("status").innerText = "Approving $2 USD1...";
         await token.methods.approve(CONTRACT_ADDRESS, required).send({ from: account });
       }
 
-      document.getElementById("status").innerText = "Joining system...";
+      document.getElementById("status").innerText = "Joining MLM system...";
       await contract.methods.join(ref).send({ from: account });
       document.getElementById("status").innerText = "Joined successfully!";
-      loadInfo();
-    }
-
-    async function loadInfo() {
-      const count = await contract.methods.getReferralCount().call({ from: account });
-      const dividend = await contract.methods.getDividendInfo().call({ from: account });
-      const uplines = await contract.methods.getUplines().call({ from: account });
-
-      document.getElementById("referrals").innerText = `Direct Referrals: ${count}`;
-      document.getElementById("dividends").innerText = dividend.eligible ? `Eligible Dividend: ${web3.utils.fromWei(dividend.amount)} USD1` : `Not eligible for dividend`;
-      document.getElementById("uplines").innerText = `10 Uplines: \n${uplines.filter(x => x !== "0x77bee8da0DCeE21a4ad406F7Ca6494e9C8CD7e71").join("\n")}`;
-    }
-
-    async function withdrawEarnings() {
-      document.getElementById("status").innerText = "Withdrawing...";
-      await contract.methods.withdraw().send({ from: account });
-      document.getElementById("status").innerText = "Withdrawal complete.";
     }
 
     window.addEventListener("load", connectWallet);
