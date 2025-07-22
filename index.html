@@ -35,6 +35,21 @@
     <button onclick="claimDividend()">Claim Dividend</button>
   </div>
 
+  <div class="card">
+    <h4>10-Level Uplines</h4>
+    <ol id="uplines"></ol>
+  </div>
+
+  <div class="card">
+    <h4>Earnings History</h4>
+    <ul id="earnings"></ul>
+  </div>
+
+  <div class="card">
+    <h4>Withdraw Balance</h4>
+    <button onclick="withdrawEarnings()">Withdraw</button>
+  </div>
+
   <script>
     const CONTRACT_ADDRESS = "0x528C40478b9a0dd180C1DB47141e285fF00c4fCA";
     const USD1_TOKEN_ADDRESS = "0x8d0D000Ee44948FC98c9B98A4FA4921476f08B0d";
@@ -105,7 +120,6 @@
             document.getElementById("referrer").value = ref;
           }
 
-          // These contract methods are assumed and must exist in your contract
           try {
             const directs = await contract.methods.getDirects(account).call();
             document.getElementById("directs").innerText = directs.length || 0;
@@ -120,6 +134,28 @@
             const month = Math.floor(Date.now() / 1000 / (30 * 24 * 60 * 60)) - 1;
             const claimed = await contract.methods.hasClaimed(account, month).call();
             document.getElementById("claimed").innerText = claimed ? "Yes" : "No";
+          } catch {}
+
+          try {
+            const uplines = await contract.methods.getUplines(account).call();
+            const uplist = document.getElementById("uplines");
+            uplist.innerHTML = "";
+            uplines.slice(0, 10).forEach((upline, i) => {
+              const li = document.createElement("li");
+              li.textContent = `Level ${i + 1}: ${upline}`;
+              uplist.appendChild(li);
+            });
+          } catch {}
+
+          try {
+            const earnings = await contract.methods.getEarnings(account).call();
+            const earnlist = document.getElementById("earnings");
+            earnlist.innerHTML = "";
+            earnings.forEach((e, i) => {
+              const li = document.createElement("li");
+              li.textContent = `Level ${i + 1}: $${web3.utils.fromWei(e, 'ether')}`;
+              earnlist.appendChild(li);
+            });
           } catch {}
 
         } catch (error) {
@@ -160,6 +196,17 @@
       } catch (err) {
         console.error(err);
         alert("Claim failed!");
+      }
+    }
+
+    async function withdrawEarnings() {
+      try {
+        await contract.methods.withdraw().send({ from: account });
+        alert("Withdrawal successful!");
+        location.reload();
+      } catch (err) {
+        console.error(err);
+        alert("Withdrawal failed!");
       }
     }
   </script>
