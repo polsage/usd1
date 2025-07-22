@@ -14,9 +14,9 @@
 <body>
 
   <h2>USD1 MLM Dashboard</h2>
+  <button onclick="connectWallet()">Connect Wallet</button>
 
   <div class="card">
-	   <button onclick="connectWallet()">Connect Wallet</button>
     <p><strong>Wallet Address:</strong> <span id="wallet">Not Connected</span></p>
     <p><strong>Total Direct Referrals:</strong> <span id="directs">-</span></p>
     <p><strong>Eligible for Dividend:</strong> <span id="eligible">-</span></p>
@@ -27,6 +27,7 @@
     <h4>Join MLM</h4>
     <input type="text" id="referrer" placeholder="Enter referrer address" />
     <button onclick="joinMLM()">Join for $20 USD1</button>
+    <p>Share your referral URL: <span id="refLink"></span></p>
   </div>
 
   <div class="card">
@@ -36,6 +37,7 @@
 
   <script>
     const CONTRACT_ADDRESS = "0x528C40478b9a0dd180C1DB47141e285fF00c4fCA";
+    const USD1_TOKEN_ADDRESS = "0x8d0D000Ee44948FC98c9B98A4FA4921476f08B0d";
     const ABI = [
 	{
 		"inputs": [
@@ -91,10 +93,14 @@
 		"type": "function"
 	}
 ];
+    const ERC20_ABI = [
+      { "constant": false, "inputs": [ {"name": "_spender", "type": "address"}, {"name": "_value", "type": "uint256"} ], "name": "approve", "outputs": [ {"name": "", "type": "bool"} ], "type": "function" },
+      { "constant": true, "inputs": [ {"name": "_owner", "type": "address"}, {"name": "_spender", "type": "address"} ], "name": "allowance", "outputs": [ {"name": "", "type": "uint256"} ], "type": "function" }
+    ];
 
-    let web3, contract, account;
+    let web3, contract, token, account;
 
-    async function init() {
+    async function connectWallet() {
       if (window.ethereum) {
         web3 = new Web3(window.ethereum);
         await ethereum.request({ method: 'eth_requestAccounts' });
@@ -103,6 +109,7 @@
         document.getElementById("wallet").innerText = account;
 
         contract = new web3.eth.Contract(ABI, CONTRACT_ADDRESS);
+        token = new web3.eth.Contract(ERC20_ABI, USD1_TOKEN_ADDRESS);
 
         const directs = await contract.methods.getDirects(account).call();
         document.getElementById("directs").innerText = directs.length;
@@ -113,6 +120,15 @@
         const month = Math.floor(Date.now() / 1000 / (30 * 24 * 60 * 60)) - 1;
         const claimed = await contract.methods.hasClaimed(account, month).call();
         document.getElementById("claimed").innerText = claimed ? "Yes" : "No";
+
+        document.getElementById("refLink").innerText = `${window.location.origin}${window.location.pathname}?ref=${account}`;
+
+        // Auto-fill referrer from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const ref = urlParams.get("ref");
+        if (ref && web3.utils.isAddress(ref)) {
+          document.getElementById("referrer").value = ref;
+        }
       } else {
         alert("Please install MetaMask to use this dApp.");
       }
@@ -126,6 +142,11 @@
       }
 
       try {
+        const allowance = await token.methods.allowance(account, CONTRACT_ADDRESS).call();
+        if (parseInt(allowance) < 20000000) { // assuming 6 decimals
+          await token.methods.approve(CONTRACT_ADDRESS, "20000000").send({ from: account });
+        }
+
         await contract.methods.join(referrer).send({ from: account });
         alert("Joined successfully!");
         location.reload();
@@ -137,7 +158,4 @@
 
     async function claimDividend() {
       try {
-        await contract.methods.claimDividend().send({ from: account });
-        alert("Dividend claimed!");
-        location.reload();
-      }
+        awai
