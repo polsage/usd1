@@ -16,6 +16,11 @@
       <p><strong>Connected Wallet:</strong> <span id="walletAddress">Not Connected</span></p>
       <input type="text" id="referrer" placeholder="Referrer Address" class="border p-2 w-full my-2">
       <button onclick="register()" class="bg-blue-500 text-white px-4 py-2 rounded w-full">Join System</button>
+      <div class="mt-2">
+        <label class="block text-sm text-gray-600 mb-1">Your Referral Link:</label>
+        <input type="text" id="referralLink" readonly class="border p-2 w-full text-sm text-gray-700 bg-gray-100">
+        <button onclick="copyReferralLink()" class="mt-2 bg-gray-700 text-white px-4 py-1 rounded text-sm">Copy</button>
+      </div>
     </div>
 
     <div class="bg-white p-4 rounded shadow">
@@ -86,15 +91,27 @@
         account = accounts[0];
         document.getElementById("walletAddress").innerText = account;
         contract = new web3.eth.Contract(CONTRACT_ABI, CONTRACT_ADDRESS);
+        updateReferralLink();
         fetchData();
       } else {
         alert("Install MetaMask");
       }
     }
 
+    function updateReferralLink() {
+      const link = `${window.location.origin}?ref=${account}`;
+      document.getElementById("referralLink").value = link;
+    }
+
+    function copyReferralLink() {
+      const input = document.getElementById("referralLink");
+      input.select();
+      document.execCommand("copy");
+      alert("Referral link copied to clipboard");
+    }
+
     async function register() {
       document.getElementById("status").innerText = "Registering...";
-      // TODO: Call smart contract registration logic here
       setTimeout(() => {
         document.getElementById("status").innerText = "Registration successful.";
       }, 1000);
@@ -102,14 +119,12 @@
 
     async function upgrade(level, matrix) {
       document.getElementById("status").innerText = `Upgrading ${matrix} to level ${level}...`;
-      // TODO: Call contract upgrade logic here
       setTimeout(() => {
         document.getElementById("status").innerText = "Upgrade successful.";
       }, 1000);
     }
 
     async function fetchData() {
-      // Dummy
       document.getElementById("income").innerText = "123.45 USD1";
 
       document.getElementById("referrals").innerHTML = `
@@ -152,3 +167,4 @@
   </script>
 </body>
 </html>
+
