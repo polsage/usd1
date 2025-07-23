@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>USD1 MLM DApp</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
+  </head>
+  <body class="bg-gray-50 text-gray-900">
+    <div class="max-w-4xl mx-auto p-4 space-y-6">
+      <h1 class="text-2xl font-bold">USD1 MLM DApp</h1>
+
+      <div class="bg-white p-4 rounded shadow">
+        <p><strong>Connected Wallet:</strong> <span id="account">Not Connected</span></p>
+        <input type="text" id="referrer" placeholder="Referrer address" class="border p-2 w-full my-2" />
+        <button onclick="register()" class="bg-blue-600 text-white px-4 py-2 rounded w-full">Join System</button>
+      </div>
+
+      <div class="bg-white p-4 rounded shadow">
+        <h2 class="text-xl font-semibold mb-2">Upgrade Levels</h2>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+          <script>
+            for (let i = 1; i <= 12; i++) {
+              document.write(`<button onclick=\"upgrade(${i}, 'X3')\" class=\"bg-green-500 text-white py-2 px-4 rounded\">Upgrade X3 L${i}</button>`);
+            }
+            for (let i = 1; i <= 12; i++) {
+              document.write(`<button onclick=\"upgrade(${i}, 'X6')\" class=\"bg-yellow-500 text-white py-2 px-4 rounded\">Upgrade X6 L${i}</button>`);
+            }
+          </script>
+        </div>
+      </div>
+
+      <div class="bg-white p-4 rounded shadow">
+        <h2 class="text-xl font-semibold">Income Dashboard</h2>
+        <p class="text-lg">Total Income: <strong id="income">0 USD1</strong></p>
+      </div>
+
+      <div class="bg-white p-4 rounded shadow">
+        <h2 class="text-xl font-semibold">Leaderboard</h2>
+        <ul id="leaderboard" class="list-disc pl-5"></ul>
+      </div>
+
+      <div class="bg-white p-4 rounded shadow">
+        <h2 class="text-xl font-semibold">Admin Panel (Coming Soon)</h2>
+        <p>Manage upgrades, referrals, tokens and reinvestment settings.</p>
+      </div>
+
+      <p id="status" class="text-green-600"></p>
+    </div>
+
+    <script>
+      const CONTRACT_ADDRESS = "0x8430347c9fc22c641b8366f834540531920832be";
+      const CONTRACT_ABI = [{"constant":false,"inputs":[{"internalType":"address","name":"recipient","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"transfer","outputs":[{"internalType":"bool","name":"","type":"bool"}],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":false,"inputs":[{"internalType":"address","name":"sender","type":"address"},{"internalType":"address","name":"recipient","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"transferFrom","outputs":[{"internalType":"bool","name":"","type":"bool"}],"payable":false,"stateMutability":"nonpayable","type":"function"}];
+
+      let web3;
+      let account;
+      let contract;
+
+      async function initWeb3() {
+        if (window.ethereum) {
+          web3 = new Web3(window.ethereum);
+          const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+          account = accounts[0];
+          document.getElementById("account").textContent = account;
+          contract = new web3.eth.Contract(CONTRACT_ABI, CONTRACT_ADDRESS);
+        } else {
+          alert("Install MetaMask to use this dApp");
+        }
+      }
+
+      async function register() {
+        const referrer = document.getElementById("referrer").value;
+        document.getElementById("status").textContent = "Registering...";
+        try {
+          // Custom registration logic
+          document.getElementById("status").textContent = "Registration successful";
+        } catch (e) {
+          console.error(e);
+          document.getElementById("status").textContent = "Registration failed";
+        }
+      }
+
+      async function upgrade(level, matrix) {
+        document.getElementById("status").textContent = `Upgrading to level ${level} on ${matrix}...`;
+        try {
+          // Custom upgrade logic
+          document.getElementById("status").textContent = "Upgrade successful";
+        } catch (e) {
+          console.error(e);
+          document.getElementById("status").textContent = "Upgrade failed";
+        }
+      }
+
+      async function fetchLeaderboard() {
+        const dummy = [
+          { addr: "0xabc...123", income: "50 USD1" },
+          { addr: "0xdef...456", income: "40 USD1" }
+        ];
+        const ul = document.getElementById("leaderboard");
+        dummy.forEach(entry => {
+          const li = document.createElement("li");
+          li.textContent = `${entry.addr} — ${entry.income}`;
+          ul.appendChild(li);
+        });
+      }
+
+      async function fetchIncome() {
+        document.getElementById("income").textContent = "123.45 USD1";
+      }
+
+      window.onload = () => {
+        initWeb3();
+        fetchLeaderboard();
+        fetchIncome();
+      };
+    </script>
+  </body>
+</html>
