@@ -2,53 +2,30 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>USD1 MLM DApp</title>
+  <title>USD1 MLM Registration</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/web3@1.8.2/dist/web3.min.js"></script>
 </head>
 <body class="bg-gray-100 p-4">
-  <main class="max-w-3xl mx-auto space-y-6">
+  <main class="max-w-md mx-auto space-y-6">
 
-    <h1 class="text-2xl font-bold">USD1 MLM DApp</h1>
+    <h1 class="text-2xl font-bold text-center">Join USD1 MLM</h1>
 
-    <div class="bg-white p-4 rounded shadow">
-      <p><strong>Connected Wallet:</strong> <span id="walletAddress">Not Connected</span></p>
-      <input type="text" id="referrer" placeholder="Referrer Address" class="border p-2 w-full my-2">
-      <button onclick="register()" class="bg-blue-500 text-white px-4 py-2 rounded w-full">Join System</button>
-      <div class="mt-2">
-        <label class="block text-sm text-gray-600 mb-1">Your Referral Link:</label>
-        <input type="text" id="referralLink" readonly class="border p-2 w-full text-sm text-gray-700 bg-gray-100">
-        <button onclick="copyReferralLink()" class="mt-2 bg-gray-700 text-white px-4 py-1 rounded text-sm">Copy</button>
+    <div class="bg-white p-6 rounded shadow">
+      <p class="mb-2"><strong>Connected Wallet:</strong> <span id="walletAddress">Not Connected</span></p>
+
+      <div class="flex justify-between space-x-2 mb-4">
+        <button onclick="connectWallet()" id="connectBtn" class="bg-green-500 text-white px-4 py-2 rounded w-1/2">Connect</button>
+        <button onclick="disconnectWallet()" id="disconnectBtn" class="bg-red-500 text-white px-4 py-2 rounded w-1/2" disabled>Disconnect</button>
       </div>
+
+      <input type="text" id="referrer" placeholder="Referrer Address" class="border p-2 w-full mb-4">
+      <button onclick="register()" class="bg-blue-500 text-white px-4 py-2 rounded w-full">Join System</button>
     </div>
 
-    <div class="bg-white p-4 rounded shadow">
-      <h2 class="text-xl font-semibold mb-2">Upgrade Levels</h2>
-      <div id="upgradeButtons" class="grid grid-cols-2 md:grid-cols-4 gap-2"></div>
-    </div>
+    <p id="status" class="text-center text-green-600"></p>
 
-    <div class="bg-white p-4 rounded shadow">
-      <h2 class="text-xl font-semibold">Income Dashboard</h2>
-      <p class="text-lg">Total Income: <strong id="income">0 USD1</strong></p>
-    </div>
-
-    <div class="bg-white p-4 rounded shadow">
-      <h2 class="text-xl font-semibold">Referral Tree</h2>
-      <ul id="referrals" class="list-disc pl-5 text-sm text-gray-700"></ul>
-    </div>
-
-    <div class="bg-white p-4 rounded shadow">
-      <h2 class="text-xl font-semibold">Leaderboard</h2>
-      <ul id="leaderboard" class="list-disc pl-5 text-sm text-gray-700"></ul>
-    </div>
-
-    <div class="bg-white p-4 rounded shadow">
-      <h2 class="text-xl font-semibold">Admin Panel</h2>
-      <button onclick="adminTransfer()" class="bg-red-500 text-white px-4 py-2 rounded">Manual Token Payout</button>
-    </div>
-
-    <p id="status" class="text-green-600"></p>
   </main>
 
   <script>
@@ -91,80 +68,31 @@
         account = accounts[0];
         document.getElementById("walletAddress").innerText = account;
         contract = new web3.eth.Contract(CONTRACT_ABI, CONTRACT_ADDRESS);
-        updateReferralLink();
-        fetchData();
+        document.getElementById("connectBtn").disabled = true;
+        document.getElementById("disconnectBtn").disabled = false;
       } else {
         alert("Install MetaMask");
       }
     }
 
-    function updateReferralLink() {
-      const link = `${window.location.origin}?ref=${account}`;
-      document.getElementById("referralLink").value = link;
-    }
-
-    function copyReferralLink() {
-      const input = document.getElementById("referralLink");
-      input.select();
-      document.execCommand("copy");
-      alert("Referral link copied to clipboard");
+    function disconnectWallet() {
+      account = null;
+      document.getElementById("walletAddress").innerText = "Not Connected";
+      document.getElementById("connectBtn").disabled = false;
+      document.getElementById("disconnectBtn").disabled = true;
     }
 
     async function register() {
       document.getElementById("status").innerText = "Registering...";
+      // TODO: Connect to smart contract register method
       setTimeout(() => {
         document.getElementById("status").innerText = "Registration successful.";
       }, 1000);
     }
 
-    async function upgrade(level, matrix) {
-      document.getElementById("status").innerText = `Upgrading ${matrix} to level ${level}...`;
-      setTimeout(() => {
-        document.getElementById("status").innerText = "Upgrade successful.";
-      }, 1000);
-    }
-
-    async function fetchData() {
-      document.getElementById("income").innerText = "123.45 USD1";
-
-      document.getElementById("referrals").innerHTML = `
-        <li>0xChild1</li>
-        <li>0xChild2</li>
-      `;
-
-      document.getElementById("leaderboard").innerHTML = `
-        <li>0xabc...123 — 50 USD1</li>
-        <li>0xdef...456 — 40 USD1</li>
-      `;
-    }
-
-    async function adminTransfer() {
-      const to = prompt("Recipient address:");
-      const amount = prompt("Amount in USD1:");
-      try {
-        await contract.methods.transfer(to, web3.utils.toWei(amount)).send({ from: account });
-        alert("Transfer successful");
-      } catch (err) {
-        console.error(err);
-        alert("Transfer failed");
-      }
-    }
-
-    function renderUpgradeButtons() {
-      const container = document.getElementById("upgradeButtons");
-      for (let i = 1; i <= 12; i++) {
-        container.innerHTML += `<button onclick="upgrade(${i}, 'X3')" class="bg-green-500 text-white px-2 py-1 rounded text-sm">Upgrade X3 L${i}</button>`;
-      }
-      for (let i = 1; i <= 12; i++) {
-        container.innerHTML += `<button onclick="upgrade(${i}, 'X6')" class="bg-blue-600 text-white px-2 py-1 rounded text-sm">Upgrade X6 L${i}</button>`;
-      }
-    }
-
     window.onload = () => {
-      connectWallet();
-      renderUpgradeButtons();
+      // optional auto-connect logic can go here
     };
   </script>
 </body>
 </html>
-
