@@ -28,35 +28,37 @@
 
   <script>
     const CONTRACT_ADDRESS = "0x8430347c9fc22c641b8366f834540531920832be";
+    const USD1_TOKEN_ADDRESS = "0x8d0D000Ee44948FC98c9B98A4FA4921476f08B0d"; // USD1 token address on BSC
     const CONTRACT_ABI = [
       {
         "constant": false,
         "inputs": [
-          { "internalType": "address", "name": "recipient", "type": "address" },
-          { "internalType": "uint256", "name": "amount", "type": "uint256" }
+          { "internalType": "address", "name": "referrer", "type": "address" }
         ],
-        "name": "transfer",
-        "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
-        "payable": false,
-        "stateMutability": "nonpayable",
-        "type": "function"
-      },
-      {
-        "constant": false,
-        "inputs": [
-          { "internalType": "address", "name": "sender", "type": "address" },
-          { "internalType": "address", "name": "recipient", "type": "address" },
-          { "internalType": "uint256", "name": "amount", "type": "uint256" }
-        ],
-        "name": "transferFrom",
-        "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
+        "name": "register",
+        "outputs": [],
         "payable": false,
         "stateMutability": "nonpayable",
         "type": "function"
       }
     ];
 
-    let web3, account, contract;
+    const USD1_ABI = [
+      {
+        "constant": false,
+        "inputs": [
+          { "internalType": "address", "name": "spender", "type": "address" },
+          { "internalType": "uint256", "name": "amount", "type": "uint256" }
+        ],
+        "name": "approve",
+        "outputs": [ { "internalType": "bool", "name": "", "type": "bool" } ],
+        "payable": false,
+        "stateMutability": "nonpayable",
+        "type": "function"
+      }
+    ];
+
+    let web3, account, contract, usd1;
 
     async function connectWallet() {
       if (window.ethereum) {
@@ -66,6 +68,7 @@
         account = accounts[0];
         document.getElementById("walletAddress").innerText = account;
         contract = new web3.eth.Contract(CONTRACT_ABI, CONTRACT_ADDRESS);
+        usd1 = new web3.eth.Contract(USD1_ABI, USD1_TOKEN_ADDRESS);
       } else {
         alert("Install MetaMask");
       }
@@ -84,10 +87,15 @@
           throw new Error("Invalid referrer address");
         }
 
-        // Replace with actual register call when ABI includes it
-        // Example: await contract.methods.register(referrer).send({ from: account });
+        const registrationAmount = web3.utils.toWei("1", "ether"); // 1 USD1 = 1 * 10^18
 
-        document.getElementById("status").innerText = "Registration request sent to MetaMask.";
+        // Step 1: Approve contract to spend user's USD1
+        await usd1.methods.approve(CONTRACT_ADDRESS, registrationAmount).send({ from: account });
+
+        // Step 2: Call register function
+        await contract.methods.register(referrer).send({ from: account });
+
+        document.getElementById("status").innerText = "Registration successful.";
       } catch (error) {
         console.error(error);
         document.getElementById("status").innerText = "Registration failed: " + error.message;
