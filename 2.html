@@ -19,8 +19,9 @@
   <p>Status: <span id="status"></span></p>
 
   <script>
-    const USD1_TOKEN_ADDRESS = "0x8d0D000Ee44948FC98c9B98A4FA4921476f08B0d"; // USD1 token
+    const USD1_TOKEN_ADDRESS = "0x8d0D000Ee44948FC98c9B98A4FA4921476f08B0d"; // USD1 token address
     const MLM_CONTRACT_ADDRESS = "0x030454e152db1a861a9a41729784b62ed987b544"; // Your MLM contract
+
     const USD1_ABI = [
       {
         "constant": false,
@@ -71,6 +72,7 @@
     async function approve() {
       const usd1 = new web3.eth.Contract(USD1_ABI, USD1_TOKEN_ADDRESS);
       const amount = web3.utils.toWei("2", "ether"); // 2 USD1
+
       try {
         document.getElementById("status").innerText = "Approving 2 USD1...";
         await usd1.methods.approve(MLM_CONTRACT_ADDRESS, amount).send({ from: account });
@@ -82,13 +84,13 @@
     }
 
     async function register() {
-      const mlm = new web3.eth.Contract(MLM_ABI, MLM_CONTRACT_ADDRESS);
       const referrer = document.getElementById("ref").value;
-
       if (!web3.utils.isAddress(referrer)) {
         document.getElementById("status").innerText = "Invalid referrer address.";
         return;
       }
+
+      const mlm = new web3.eth.Contract(MLM_ABI, MLM_CONTRACT_ADDRESS);
 
       try {
         document.getElementById("status").innerText = "Registering...";
